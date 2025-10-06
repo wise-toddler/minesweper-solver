@@ -85,20 +85,130 @@ Ensure these are granted in Android settings:
 - Storage (for accessing `/sdcard/AutoX/scripts/`)
 - Display over other apps (for floating button and overlays)
 
-## File Organization
+## Implementation Status
 
-Keep scripts modular for maintainability:
-- `main.js` - Entry point and main loop
-- `grid.js` - Grid detection and cell mapping
-- `vision.js` - Screen capture and recognition
-- `solver.js` - Minesweeper logic
-- `actions.js` - Input simulation helpers
-- `config.js` - Tunable parameters (colors, delays, thresholds)
+**✅ Core modules implemented and ready to test:**
+
+- `main.js` - Entry point with game loop, stats tracking, and error handling
+- `config.js` - Comprehensive configuration (device settings, colors, timing, solver behavior)
+- `actions.js` - Input wrappers (tap, long-press, swipe, scroll)
+- `vision.js` - Screen capture, color detection, cell state recognition
+- `grid.js` - Grid detection, coordinate mapping, neighbor analysis
+- `solver.js` - Constraint satisfaction solver with probability-based guessing
+- `debug.js` - Logging, statistics, and visualization utilities
+
+## Getting Started
+
+### Initial Configuration (Required)
+
+Before running the bot, **you must tune `config.js`** for your device:
+
+1. **Screen Resolution**: Set `screenWidth` and `screenHeight` to match your device
+2. **Game Area**: Use screenshot + image viewer to find pixel coordinates of the game grid
+   - `top`, `bottom`, `left`, `right` define the playable area
+3. **Cell Size**: Measure one cell width in pixels (or let auto-detection estimate)
+4. **Colors**: Sample colors from your game for accurate detection:
+   - Covered cells (unrevealed)
+   - Revealed empty cells
+   - Flag markers
+   - Numbers 1-8 (each may have different colors)
+
+### Running the Bot
+
+```
+1. Open Minesweeper game on Android
+2. Open AutoX.js app
+3. Navigate to /sdcard/AutoX/scripts/minesweeper/
+4. Tap main.js and press ▶️ Run
+5. You have 3 seconds to switch back to the game
+6. Bot will auto-detect grid and start playing
+7. Press Volume Down to stop
+```
+
+## Module Interactions
+
+```
+main.js (orchestrator)
+  ├─> vision.js (requestPermission, captureScreen)
+  ├─> grid.js (detectGrid, initializeGrid, scanGrid)
+  ├─> solver.js (getNextMove)
+  │     └─> grid.js (getCell, getNeighbors, countNeighborsByState)
+  └─> actions.js (revealCell, placeFlag, scroll)
+        └─> config.js (delays, gameArea)
+
+Each module requires config.js
+debug.js is used by all modules for logging
+```
+
+## Configuration Tuning
+
+### Finding Game Area Coordinates
+
+1. Take screenshot during gameplay (AutoX.js has screenshot tool)
+2. Open in image viewer that shows pixel coordinates
+3. Note down the top-left and bottom-right corners of the grid
+4. Update `config.gameArea` values
+
+### Sampling Colors
+
+The bot relies on color matching. To get accurate colors:
+
+1. Enable debug mode: `config.debug.saveScreenshots = true`
+2. Run bot for a few frames (it will fail but save screenshots)
+3. Open screenshots in image editor (like GIMP)
+4. Use color picker tool on different cell states
+5. Copy hex values to `config.colors`
+6. Adjust `threshold` values if detection is unreliable (higher = more tolerant)
+
+### Tuning Performance
+
+- `delays.betweenMoves`: Lower for speed, higher for stability
+- `delays.screenCapture`: Must be long enough for screen to update after actions
+- `solver.useAdvancedLogic`: Disable for simpler (faster) logic
+- `debug.enabled`: Disable in production for slight performance gain
+
+## Solver Algorithm
+
+The bot uses two-pass solving:
+
+**Pass 1: Constraint Satisfaction (100% safe moves)**
+- For each revealed number N with F flags and C covered neighbors:
+  - If F = N: reveal all C covered neighbors (all mines found)
+  - If F + C = N: flag all C covered neighbors (all are mines)
+
+**Pass 2: Probability-Based Guessing** (when no safe moves)
+- Calculate mine probability for each covered cell based on neighboring numbers
+- Choose cell with lowest mine probability
+- Fall back to random guess if no good candidates
+
+**Pass 3: Scrolling** (infinite board)
+- When X% of visible cells revealed, scroll to reveal new area
+- Reset detection for new grid section
 
 ## Debugging Strategies
 
-- Use `console.log()` - appears in AutoX.js console
-- Draw overlay rectangles with `canvas` module to visualize detected cells
-- Add `toast()` messages for state transitions
-- Save captured screenshots to `/sdcard/` for offline analysis
-- Test individual modules in isolation before integration
+- **Enable debug mode** in `config.js`: `debug.enabled = true`
+- **Console logs**: AutoX.js shows console output in real-time
+- **Toast messages**: On-screen notifications for major events
+- **Screenshot saving**: Capture each frame for offline analysis
+- **Stats display**: Shows moves, flags, revealed count every 10 moves
+- **Grid visualization**: (Planned) Draw overlay boxes on detected cells
+
+### Common Issues
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| "Screen capture permission denied" | Permission not granted | Re-run and grant permission in popup |
+| "No moves available" repeatedly | Color detection failing | Re-sample colors in config.js |
+| Bot clicks wrong positions | Grid detection off | Verify gameArea coordinates |
+| Bot too slow | Delays too high | Reduce delays in config.js |
+| Bot makes mistakes | Color thresholds too loose | Lower threshold values |
+| Grid not detected | Game UI different | Manually set cellSize in config |
+
+## Development Tips
+
+- **Test color detection first**: Run vision.detectCellState() on known cells
+- **Verify grid coordinates**: Use debug.drawRect() to visualize detected grid
+- **Start with manual config**: Auto-detection may fail on first try
+- **Iterate on colors**: Different devices/games have different color schemes
+- **Watch the console**: Real-time logs show what the bot is "thinking"
