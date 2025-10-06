@@ -1,0 +1,25 @@
+# AutoX.js runtime files
+*.log
+
+# Debug screenshots
+screenshots/
+*.png
+*.jpg
+
+# Temporary test files
+test_*.js
+temp_*.js
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Personal config (if you add device-specific settings)
+config.local.js
