@@ -29,35 +29,23 @@ const config = {
   // Bot detects cell size from grid line patterns
   cellSize: 80,  // Leave as 80 for auto-detection
 
-  // Color thresholds for cell state detection (RGB)
+  // Color thresholds for cell state detection (AUTO-DETECTED)
   colors: {
-    // Unrevealed/covered cell color
+    // Unrevealed/covered cell color (gray)
     covered: "#AAAAAA",
-    coveredThreshold: 30,  // Color match tolerance
+    coveredThreshold: 30,
 
-    // Revealed empty cell color
+    // Revealed cell color (blue with numbers)
     revealed: "#EEEEEE",
     revealedThreshold: 30,
 
-    // Flag marker color
+    // Flag marker color (pink/red)
     flag: "#FF0000",
     flagThreshold: 40,
 
-    // Mine color (after game over)
+    // Mine color (black, after game over)
     mine: "#000000",
-    mineThreshold: 30,
-
-    // Number colors (1-8) - adjust based on game's color scheme
-    numbers: {
-      "1": "#0000FF",  // Blue
-      "2": "#008000",  // Green
-      "3": "#FF0000",  // Red
-      "4": "#000080",  // Dark Blue
-      "5": "#800000",  // Maroon
-      "6": "#00FFFF",  // Cyan
-      "7": "#000000",  // Black
-      "8": "#808080"   // Gray
-    }
+    mineThreshold: 30
   },
 
   // ===== TIMING & PERFORMANCE =====

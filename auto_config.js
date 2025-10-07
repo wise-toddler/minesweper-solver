@@ -193,8 +193,7 @@ const autoConfig = {
       flag: "#E91E63",
       flagThreshold: 40,
       mine: "#000000",
-      mineThreshold: 30,
-      numbers: {}
+      mineThreshold: 30
     };
 
     // Sample multiple regions to find different cell types
@@ -250,9 +249,6 @@ const autoConfig = {
     if (unrevealed) colorConfig.covered = unrevealed;
     if (revealed) colorConfig.revealed = revealed;
     if (flag) colorConfig.flag = flag;
-
-    // Note: Number colors are harder to detect automatically
-    // Keep defaults or sample during gameplay
 
     return colorConfig;
   },

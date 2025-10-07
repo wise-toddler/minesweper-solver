@@ -69,11 +69,11 @@ const vision = {
   },
 
   /**
-   * Detect cell state from color
+   * Detect cell state from color and pattern
    * @param {Image} img - Captured image
    * @param {number} x - Cell center x coordinate
    * @param {number} y - Cell center y coordinate
-   * @returns {string|number} Cell state: "covered", "revealed", "flag", "mine", or number 1-8
+   * @returns {string|number} Cell state: "covered", "revealed", "flag", "mine", or number 0-8
    */
   detectCellState(img, x, y) {
     const color = this.getPixelColor(img, x, y);
@@ -88,27 +88,76 @@ const vision = {
       return 'mine';
     }
 
-    // Check for covered cell
+    // Check for covered cell (gray)
     if (this.colorsMatch(color, config.colors.covered, config.colors.coveredThreshold)) {
       return 'covered';
     }
 
-    // Check for revealed empty cell
-    if (this.colorsMatch(color, config.colors.revealed, config.colors.revealedThreshold)) {
-      return 0; // Empty revealed cell
-    }
+    // Check if revealed (blue background)
+    const r = colors.red(color);
+    const g = colors.green(color);
+    const b = colors.blue(color);
 
-    // Check for numbers 1-8
-    for (let num = 1; num <= 8; num++) {
-      const numColor = config.colors.numbers[num.toString()];
-      if (numColor && this.colorsMatch(color, numColor, 40)) {
-        return num;
-      }
+    // Blue revealed cell detection: blue is dominant
+    const isBlueish = (b > 150 && r > 80 && r < 220 && g > 80 && g < 220);
+
+    if (isBlueish || this.colorsMatch(color, config.colors.revealed, config.colors.revealedThreshold)) {
+      // Cell is revealed - now detect the number
+      // Count white pixels in a small region around center (numbers are white text)
+      const number = this.detectNumberInCell(img, x, y);
+      return number; // Returns 0-8
     }
 
     // Default: assume covered if unclear
-    log('debug', `Unknown cell state at (${x}, ${y}), color: ${colors.toString(color)}`);
+    log('debug', `Unknown cell state at (${x}, ${y}), color: RGB(${r},${g},${b})`);
     return 'covered';
+  },
+
+  /**
+   * Detect number in a revealed cell by analyzing white pixels
+   * @param {Image} img - Captured image
+   * @param {number} x - Cell center x
+   * @param {number} y - Cell center y
+   * @returns {number} Number 0-8 (0 = empty, 1-8 = mine count)
+   */
+  detectNumberInCell(img, x, y) {
+    // Sample a small region around the center for white pixels (text)
+    const sampleRadius = 15; // pixels around center
+    let whitePixelCount = 0;
+
+    for (let dy = -sampleRadius; dy <= sampleRadius; dy += 3) {
+      for (let dx = -sampleRadius; dx <= sampleRadius; dx += 3) {
+        const px = x + dx;
+        const py = y + dy;
+
+        if (px >= 0 && py >= 0) {
+          const pixelColor = this.getPixelColor(img, px, py);
+          const r = colors.red(pixelColor);
+          const g = colors.green(pixelColor);
+          const b = colors.blue(pixelColor);
+
+          // White text detection (high RGB values)
+          if (r > 200 && g > 200 && b > 200) {
+            whitePixelCount++;
+          }
+        }
+      }
+    }
+
+    // Heuristic: more white pixels = higher number
+    // This is approximate - actual OCR would be better
+    if (whitePixelCount < 3) return 0; // Empty (no number)
+    if (whitePixelCount < 8) return 1;
+    if (whitePixelCount < 12) return 2;
+    if (whitePixelCount < 16) return 3;
+    if (whitePixelCount < 20) return 4;
+    if (whitePixelCount < 24) return 5;
+    if (whitePixelCount < 28) return 6;
+    if (whitePixelCount < 32) return 7;
+    return 8;
+
+    // TODO: Replace with proper OCR for accuracy
+    // This pixel-counting heuristic is a placeholder
   },
 
   /**
