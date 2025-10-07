@@ -114,50 +114,154 @@ const vision = {
   },
 
   /**
-   * Detect number in a revealed cell by analyzing white pixels
+   * Detect number in a revealed cell using OCR or pattern matching
    * @param {Image} img - Captured image
    * @param {number} x - Cell center x
    * @param {number} y - Cell center y
    * @returns {number} Number 0-8 (0 = empty, 1-8 = mine count)
    */
   detectNumberInCell(img, x, y) {
-    // Sample a small region around the center for white pixels (text)
-    const sampleRadius = 15; // pixels around center
-    let whitePixelCount = 0;
+    const cellSize = config.cellSize || 80;
+    const halfSize = Math.floor(cellSize / 2);
 
-    for (let dy = -sampleRadius; dy <= sampleRadius; dy += 3) {
-      for (let dx = -sampleRadius; dx <= sampleRadius; dx += 3) {
-        const px = x + dx;
-        const py = y + dy;
+    // Extract cell region
+    const cellImg = images.clip(img, x - halfSize, y - halfSize, cellSize, cellSize);
 
-        if (px >= 0 && py >= 0) {
-          const pixelColor = this.getPixelColor(img, px, py);
-          const r = colors.red(pixelColor);
-          const g = colors.green(pixelColor);
-          const b = colors.blue(pixelColor);
+    // Try AutoX.js built-in OCR if available
+    if (typeof paddle !== 'undefined' && paddle.ocrText) {
+      try {
+        const text = paddle.ocrText(cellImg);
+        images.recycle(cellImg);
 
-          // White text detection (high RGB values)
-          if (r > 200 && g > 200 && b > 200) {
-            whitePixelCount++;
+        // Parse single digit
+        const digit = parseInt(text.trim());
+        if (!isNaN(digit) && digit >= 0 && digit <= 8) {
+          return digit;
+        }
+      } catch (e) {
+        log('debug', `OCR failed: ${e.message}`);
+      }
+    }
+
+    // Fallback: Advanced pattern-based detection
+    const number = this.detectNumberByPattern(cellImg, x, y);
+    images.recycle(cellImg);
+    return number;
+  },
+
+  /**
+   * Detect number by analyzing white pixel patterns
+   * @param {Image} cellImg - Clipped cell image
+   * @param {number} centerX - Original center X
+   * @param {number} centerY - Original center Y
+   * @returns {number} Detected number 0-8
+   */
+  detectNumberByPattern(cellImg, centerX, centerY) {
+    const width = cellImg.getWidth();
+    const height = cellImg.getHeight();
+
+    // Analyze white pixel distribution in different regions
+    const centerX_local = Math.floor(width / 2);
+    const centerY_local = Math.floor(height / 2);
+    const radius = Math.floor(Math.min(width, height) / 3);
+
+    // Count white pixels in 9 zones (3x3 grid)
+    const zones = {
+      topLeft: 0, top: 0, topRight: 0,
+      left: 0, center: 0, right: 0,
+      bottomLeft: 0, bottom: 0, bottomRight: 0
+    };
+
+    let totalWhite = 0;
+
+    for (let y = 0; y < height; y += 2) {
+      for (let x = 0; x < width; x += 2) {
+        const color = images.pixel(cellImg, x, y);
+        const r = colors.red(color);
+        const g = colors.green(color);
+        const b = colors.blue(color);
+
+        // White text detection (high RGB, not blue background)
+        const isWhite = (r > 200 && g > 200 && b > 200);
+
+        if (isWhite) {
+          totalWhite++;
+
+          // Classify into zones
+          const dx = x - centerX_local;
+          const dy = y - centerY_local;
+
+          if (dy < -radius / 2) {
+            if (dx < -radius / 2) zones.topLeft++;
+            else if (dx > radius / 2) zones.topRight++;
+            else zones.top++;
+          } else if (dy > radius / 2) {
+            if (dx < -radius / 2) zones.bottomLeft++;
+            else if (dx > radius / 2) zones.bottomRight++;
+            else zones.bottom++;
+          } else {
+            if (dx < -radius / 2) zones.left++;
+            else if (dx > radius / 2) zones.right++;
+            else zones.center++;
           }
         }
       }
     }
 
-    // Heuristic: more white pixels = higher number
-    // This is approximate - actual OCR would be better
-    if (whitePixelCount < 3) return 0; // Empty (no number)
-    if (whitePixelCount < 8) return 1;
-    if (whitePixelCount < 12) return 2;
-    if (whitePixelCount < 16) return 3;
-    if (whitePixelCount < 20) return 4;
-    if (whitePixelCount < 24) return 5;
-    if (whitePixelCount < 28) return 6;
-    if (whitePixelCount < 32) return 7;
-    return 8;
+    // Pattern recognition based on white pixel distribution
+    if (totalWhite < 5) {
+      return 0; // Empty cell
+    }
 
-    // TODO: Replace with proper OCR for accuracy
-    // This pixel-counting heuristic is a placeholder
+    // Number 1: Strong center/top vertical line
+    if (zones.center > totalWhite * 0.5 && zones.top > totalWhite * 0.2) {
+      return 1;
+    }
+
+    // Number 2: Top, center, and bottom distributed
+    if (zones.top > 3 && zones.bottom > 3 && zones.center > 2) {
+      return 2;
+    }
+
+    // Number 3: Strong right side, top and bottom
+    if (zones.right > totalWhite * 0.3 && zones.top > 2 && zones.bottom > 2) {
+      return 3;
+    }
+
+    // Number 4: Strong right side with center
+    if (zones.right > totalWhite * 0.35 && zones.left > 2 && zones.center > 3) {
+      return 4;
+    }
+
+    // Number 5: Similar to 2 but different pattern
+    if (zones.top > 3 && zones.bottom > 3 && zones.left > 2) {
+      return 5;
+    }
+
+    // Number 6: Strong left and bottom
+    if (zones.left > totalWhite * 0.3 && zones.bottom > totalWhite * 0.3) {
+      return 6;
+    }
+
+    // Number 7: Strong top, weak bottom
+    if (zones.top > totalWhite * 0.4 && zones.bottom < totalWhite * 0.15) {
+      return 7;
+    }
+
+    // Number 8: Distributed across all zones (most white pixels)
+    if (totalWhite > 45) {
+      return 8;
+    }
+
+    // Fallback: Use total white pixel count as rough estimate
+    if (totalWhite < 15) return 1;
+    if (totalWhite < 22) return 2;
+    if (totalWhite < 28) return 3;
+    if (totalWhite < 34) return 4;
+    if (totalWhite < 40) return 5;
+    if (totalWhite < 46) return 6;
+    if (totalWhite < 52) return 7;
+    return 8;
   },
 
   /**
