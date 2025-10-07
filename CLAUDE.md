@@ -90,28 +90,27 @@ Ensure these are granted in Android settings:
 **✅ Core modules implemented and ready to test:**
 
 - `main.js` - Entry point with game loop, stats tracking, and error handling
-- `config.js` - Comprehensive configuration (device settings, colors, timing, solver behavior)
+- `config.js` - Comprehensive configuration (mostly optional now!)
+- `auto_config.js` - **NEW**: Auto-detects screen size, game area, cell size, colors at runtime
 - `actions.js` - Input wrappers (tap, long-press, swipe, scroll)
 - `vision.js` - Screen capture, color detection, cell state recognition
 - `grid.js` - Grid detection, coordinate mapping, neighbor analysis
 - `solver.js` - Constraint satisfaction solver with probability-based guessing
 - `debug.js` - Logging, statistics, and visualization utilities
 
+**🎯 Device-Agnostic: Works on ANY Android device without manual configuration!**
+
 ## Getting Started
 
-### Initial Configuration (Required)
+### Zero Configuration Required! 🎉
 
-Before running the bot, **you must tune `config.js`** for your device:
+The bot automatically detects everything at runtime:
+- ✅ Screen resolution
+- ✅ Game area boundaries
+- ✅ Cell size from grid patterns
+- ✅ Cell colors (covered, revealed, flags)
 
-1. **Screen Resolution**: Set `screenWidth` and `screenHeight` to match your device
-2. **Game Area**: Use screenshot + image viewer to find pixel coordinates of the game grid
-   - `top`, `bottom`, `left`, `right` define the playable area
-3. **Cell Size**: Measure one cell width in pixels (or let auto-detection estimate)
-4. **Colors**: Sample colors from your game for accurate detection:
-   - Covered cells (unrevealed)
-   - Revealed empty cells
-   - Flag markers
-   - Numbers 1-8 (each may have different colors)
+**Just run it - no config needed!**
 
 ### Running the Bot
 
@@ -129,38 +128,36 @@ Before running the bot, **you must tune `config.js`** for your device:
 
 ```
 main.js (orchestrator)
+  ├─> auto_config.js (detectConfiguration) ← NEW: Auto-detect everything!
   ├─> vision.js (requestPermission, captureScreen)
   ├─> grid.js (detectGrid, initializeGrid, scanGrid)
   ├─> solver.js (getNextMove)
   │     └─> grid.js (getCell, getNeighbors, countNeighborsByState)
   └─> actions.js (revealCell, placeFlag, scroll)
-        └─> config.js (delays, gameArea)
+        └─> config.js (delays, timing settings)
 
-Each module requires config.js
+config.js = optional overrides only (timing, solver behavior)
+auto_config.js = runtime detection of screen/grid/colors
 debug.js is used by all modules for logging
 ```
 
-## Configuration Tuning
+## Configuration Tuning (Optional)
 
-### Finding Game Area Coordinates
+### Auto-Detection Works Out of the Box
 
-1. Take screenshot during gameplay (AutoX.js has screenshot tool)
-2. Open in image viewer that shows pixel coordinates
-3. Note down the top-left and bottom-right corners of the grid
-4. Update `config.gameArea` values
+The bot automatically detects everything, but you can override if needed:
 
-### Sampling Colors
+**To manually configure (only if auto-detection fails):**
+1. Set `config.gameAreaManual = true` in `config.js`
+2. Measure game area coordinates from a screenshot
+3. Update `config.gameArea` values
 
-The bot relies on color matching. To get accurate colors:
+**Color detection:**
+- Auto-sampled from first screenshot
+- Usually accurate without tuning
+- Override in `config.colors` if needed
 
-1. Enable debug mode: `config.debug.saveScreenshots = true`
-2. Run bot for a few frames (it will fail but save screenshots)
-3. Open screenshots in image editor (like GIMP)
-4. Use color picker tool on different cell states
-5. Copy hex values to `config.colors`
-6. Adjust `threshold` values if detection is unreliable (higher = more tolerant)
-
-### Tuning Performance
+### Performance Tuning
 
 - `delays.betweenMoves`: Lower for speed, higher for stability
 - `delays.screenCapture`: Must be long enough for screen to update after actions

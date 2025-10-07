@@ -15,6 +15,7 @@
 
 // Import modules
 const config = require('./config.js');
+const autoConfig = require('./auto_config.js');
 const vision = require('./vision.js');
 const grid = require('./grid.js');
 const solver = require('./solver.js');
@@ -49,14 +50,41 @@ class MinesweeperBot {
     debug.toast('Switch to Minesweeper game in 3 seconds...');
     sleep(3000);
 
-    // Initial screen capture to detect grid
-    debug.log('info', 'Capturing initial screen...');
+    // Initial screen capture for auto-configuration
+    debug.log('info', 'Capturing initial screen for auto-configuration...');
     const img = vision.captureScreen();
 
     if (!img) {
       debug.toast('Failed to capture screen');
       exit();
     }
+
+    // Auto-detect configuration from screenshot
+    debug.toast('Auto-detecting configuration...');
+    const detectedConfig = autoConfig.detectConfiguration(img);
+
+    // Merge detected config with manual config (manual overrides auto)
+    // This allows users to override specific values if needed
+    config.screenWidth = config.screenWidth || detectedConfig.screenWidth;
+    config.screenHeight = config.screenHeight || detectedConfig.screenHeight;
+
+    // Only override gameArea if not manually set (check if default values)
+    if (!config.gameAreaManual) {
+      config.gameArea = detectedConfig.gameArea;
+    }
+
+    // Only override cellSize if not manually set or is default
+    if (config.cellSize === 80 || !config.cellSize) {
+      config.cellSize = detectedConfig.cellSize;
+    }
+
+    // Merge colors (auto-detected colors override defaults)
+    config.colors = Object.assign({}, config.colors, detectedConfig.colors);
+
+    debug.log('info', 'Final configuration:');
+    debug.log('info', `  Screen: ${config.screenWidth}x${config.screenHeight}`);
+    debug.log('info', `  Game area: ${JSON.stringify(config.gameArea)}`);
+    debug.log('info', `  Cell size: ${config.cellSize}px`);
 
     // Detect and initialize grid
     grid.detectGrid(img);

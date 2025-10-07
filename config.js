@@ -1,15 +1,23 @@
 /**
  * Configuration for Minesweeper Bot
- * Adjust these values based on your device and game UI
+ *
+ * ✨ AUTO-DETECTION ENABLED ✨
+ * The bot automatically detects screen size, game area, cell size, and colors!
+ * You don't need to configure anything - just run it.
+ *
+ * Manual configuration only needed if auto-detection fails or for fine-tuning.
  */
 
 const config = {
-  // ===== DEVICE SETTINGS =====
-  screenWidth: 1080,  // Your device screen width in pixels
-  screenHeight: 2400, // Your device screen height in pixels
+  // ===== DEVICE SETTINGS (AUTO-DETECTED) =====
+  // Leave null to auto-detect, or set values to override
+  screenWidth: null,  // Auto-detected from device screen
+  screenHeight: null, // Auto-detected from device screen
 
-  // ===== GAME UI BOUNDARIES =====
-  // Define the game grid area (adjust after visual inspection)
+  // ===== GAME UI BOUNDARIES (AUTO-DETECTED) =====
+  // Auto-detection finds where grid starts/ends automatically
+  // Set gameAreaManual: true only if you want to override
+  gameAreaManual: false,
   gameArea: {
     top: 200,      // Pixels from top of screen
     bottom: 2200,  // Pixels from top of screen
@@ -17,9 +25,9 @@ const config = {
     right: 1030    // Pixels from left
   },
 
-  // ===== CELL DETECTION =====
-  // Estimated cell size (will be auto-detected, but good starting point)
-  cellSize: 80,  // Approximate cell width/height in pixels
+  // ===== CELL DETECTION (AUTO-DETECTED) =====
+  // Bot detects cell size from grid line patterns
+  cellSize: 80,  // Leave as 80 for auto-detection
 
   // Color thresholds for cell state detection (RGB)
   colors: {

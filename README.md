@@ -2,6 +2,8 @@
 
 Automated solver for infinite Minesweeper-style Android games using AutoX.js.
 
+**🎯 Device-Agnostic: Zero configuration required - works on any Android device!**
+
 ## Quick Start
 
 ### Prerequisites
@@ -18,8 +20,8 @@ Automated solver for infinite Minesweeper-style Android games using AutoX.js.
 
 2. **On Laptop:**
    - Clone this repo into your cloud-synced folder
-   - Edit `config.js` with your device screen resolution and game UI boundaries
    - Files auto-sync to phone
+   - **No configuration needed!** Bot auto-detects everything
 
 3. **Run Bot:**
    - Open Minesweeper game on Android
@@ -27,21 +29,31 @@ Automated solver for infinite Minesweeper-style Android games using AutoX.js.
    - Select and run `main.js`
    - Bot will take over and play automatically
 
-## Configuration
+## Auto-Detection Features ✨
 
-Edit `config.js` to customize:
-- Screen resolution and game area coordinates
-- Cell colors for detection (sample colors from your game)
-- Timing delays and performance settings
-- Solver behavior (advanced logic, probability thresholds)
-- Debug overlays and logging
+The bot automatically detects at runtime:
+- ✅ Screen resolution (any device)
+- ✅ Game area boundaries (where grid starts/ends)
+- ✅ Cell size from grid patterns
+- ✅ Cell colors (covered, revealed, flags)
+
+**No manual configuration needed!** Just run it.
+
+## Optional Configuration
+
+`config.js` is now **optional** - only customize if you want to:
+- Adjust timing delays for performance
+- Change solver behavior (advanced logic, probability thresholds)
+- Enable debug overlays and logging
+- Override auto-detection (if it fails for your game)
 
 ## Project Structure
 
 ```
 minesweeper/
 ├── main.js          # Entry point and game loop
-├── config.js        # All tunable parameters
+├── config.js        # Optional tuning parameters
+├── auto_config.js   # Auto-detection (screen, grid, colors)
 ├── actions.js       # Input simulation (tap, swipe, flag)
 ├── vision.js        # Screen capture and color detection
 ├── grid.js          # Grid detection and cell mapping
